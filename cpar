@@ -5,28 +5,34 @@ use Carp;
 use File::Temp qw/tempfile tempdir/;
 use Getopt::Long;
 
-my $usage = "Usage: $0 [-n num_processors] [-t num_threads_per_job] [--dry] walltime dir\n\n";
+my $usage = "Usage: $0 [-c aprun_chunk] [--dry] [-N job_name] [-n num_processors] [-t num_threads_per_job] [--redo] walltime dir\n\n";
 
-my ($help, $dry, $nproc, $nthread, $tmpdir);
+my ($help, $chunk, $dry, $name, $nproc, $nthread, $redo, $tmpdir);
 
-GetOptions("h|help" => \$help,
-           "dry"    => \$dry,
-           "n|np=i" => \$nproc,
-           "t|nt=i" => \$nthread,
+GetOptions("h|help"    => \$help,
+           "c|chunk=i" => \$chunk,
+           "dry"       => \$dry,
+           "n|np=i"    => \$nproc,
+           "N|name=s"  => \$name,
+           "r|redo"    => \$redo,
+           "t|nt=i"    => \$nthread,
 	  ) or die("Error in command line arguments\n");
 
 $help and die $usage;
 
+$chunk ||= 1;
+$name  ||= "cpar_batch";
+
 my $wall = shift @ARGV or die $usage;
 my $dir  = shift @ARGV or die $usage;
 
+-d $dir && !$redo and die "Directory '$dir' exists.\n\n$usage";
+remove_dir($dir) if $redo;
 verify_dir($dir);
 
 my $cores_per_node = 24;
 
 my @cmds = map { chomp; $_ } <STDIN>;
-
-# print join("\n", @cmds) . "\n";
 
 my $jobs_per_node = int($cores_per_node / $nthread);
 
@@ -36,10 +42,11 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     my $jobfile = "$dir/node_p$i.sh";
     open(F, ">$jobfile") or die "Could not open $jobfile";
     print F "#!/bin/bash\n\n";
+    print F "module swap PrgEnv-cray PrgEnv-gnu\n\n";
 
     for (my $j = 0; $j < $jobs_per_node; $j++) {
         my $cmd = shift @cmds or last;
-        print F "$cmd &\n";
+        print F "(time $cmd) > log_p$i\_j$j.txt &\n";
     }
 
     print F "\nwait\n";
@@ -47,12 +54,39 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     run("chmod a+x $jobfile");
 }
 
-my $pbs = "$dir/job.pbs";
-open(F, ">$pbs") or die "Could not open $pbs";
+my $tot = $i;
+my $beg = 1;
+while ($beg <= $tot) {
 
-close(F);
+    my $end   = min($beg+$chunk-1, $tot);
+    my $range = $chunk > 1 ? "$beg-$end/$tot" : "$beg/$tot";
+
+    my $pbs   = "$dir/job.pbs";
+    open(F, ">$pbs") or die "Could not open $pbs";
+    print F "#!/bin/bash\n";
+
+    print F "#PBS -N $name:$range\n";
+    print F "#PBS -l walltime=$wall\n";
+    print F "#PBS -l mppwidth=24\n\n";
+    print F 'cd $PBS_O_WORKDIR'."\n\n";
+
+    if ($chunk > 1) {
+        for (my $k = $beg; $k <= $end; $k++) {
+            print F "aprun node_p$k.sh &\n";
+        }
+        print F "\nwait\n";
+    } else {
+        print F "aprun node_p$beg.sh\n";
+    }
+
+    close(F);
+
+    $beg += $chunk;
+}
 
 
-sub verify_dir { run("mkdir -p $_[0]"); }
+sub min { $_[0] < $_[1] ? $_[0] : $_[1]; }
+sub remove_dir { run("rm -rf $_[0]"); }
+sub verify_dir { run("mkdir -p $_[0]");  }
 
 sub run { system(@_) == 0 or confess("FAILED: ". join(" ", @_)); }
