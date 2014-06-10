@@ -31,7 +31,7 @@ GetOptions("h|help"    => \$help,
 $help and die $usage;
 
 $chunk ||= 1;
-$name  ||= "cpar_batch";
+$name  ||= "cpar";
 
 my $wall = shift @ARGV or die $usage;
 my $dir  = shift @ARGV or die $usage;
@@ -75,24 +75,27 @@ my $k = 1;
 while ($beg <= $tot) {
 
     my $end   = min($beg+$chunk-1, $tot);
-    my $range = $chunk > 1 ? "$beg-$end/$tot" : "$beg/$tot";
+    my $b_e   = $chunk > 1 ? "$beg-$end" : $beg;
+    my $range = "$b_e/$tot";
 
     my $pbs   = "job$k.pbs";
     open(F, ">$pbs") or die "Could not open $pbs";
-    print F "#!/bin/bash\n";
+    print F "#!/bin/bash\n\n";
 
-    print F "#PBS -N $name:$range\n";
     print F "#PBS -l walltime=$wall\n";
-    print F "#PBS -l mppwidth=24\n\n";
+    print F "#PBS -l mppwidth=24\n";
+    print F "#PBS -N $name:$range\n";
+    print F "#PBS -e $name-$b_e.".'$PBS_JOBID.err'."\n";
+    print F "#PBS -o $name-$b_e.".'$PBS_JOBID.out'."\n\n";
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($chunk > 1) {
         for (my $i = $beg; $i <= $end; $i++) {
-            print F "aprun node_p$i.sh &\n";
+            print F "aprun ./node_p$i.sh &\n";
         }
         print F "\nwait\n";
     } else {
-        print F "aprun node_p$beg.sh\n";
+        print F "aprun ./node_p$beg.sh\n";
     }
 
     close(F);
