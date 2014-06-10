@@ -10,7 +10,7 @@ Usage: $0 [options] walltime directory
 
 Options:
        [-A allocation] [-c aprun_chunk] [--dry]
-       [-N job_name] [-n num_processors]
+       [-N job_name] [-n num_processors] [-q queue]
        [-t num_threads_per_job] [--redo] 
 
 End_of_Usage
