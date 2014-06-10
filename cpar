@@ -73,7 +73,7 @@ my $i = 0;
 my $cmd_i = 0;
 while (@cmds) {
     $i++; $cmd_i++;
-    my $jobfile = "$dir/node_p$i.sh";
+    my $jobfile = "$dir/node_$i.sh";
     open(F, ">$jobfile") or die "Could not open $jobfile";
     print F "#!/bin/bash\n\n";
     print F "host__=`hostname`\n\n";
@@ -91,14 +91,17 @@ while (@cmds) {
     run("chmod a+x $jobfile");
 }
 
-# $nproc ||= int((@cmds-1) / $jobs_per_node + 1);
+my $tot = $i;
+$nproc = min($nproc, $tot);
 
 chdir($dir);
-my $tot = $i;
 my $beg = 1;
 my $k = 1;
 while ($beg <= $tot) {
-
+    # my $left  = $tot - $beg + 1;
+    # my $remaining_chunks = $nproc - $k + 1;
+    my $num   = $left - $tot -  / ($nproc/$chunk)
+    
     my $end   = min($beg+$chunk-1, $tot);
     my $b_e   = $chunk > 1 ? "$beg-$end" : $beg;
     my $range = "$b_e/$tot";
@@ -116,11 +119,11 @@ while ($beg <= $tot) {
 
     if ($chunk > 1) {
         for (my $i = $beg; $i <= $end; $i++) {
-            print F "aprun ./node_p$i.sh &\n";
+            print F "aprun ./node_$i.sh &\n";
         }
         print F "\nwait\n";
     } else {
-        print F "aprun ./node_p$beg.sh\n";
+        print F "aprun ./node_$beg.sh\n";
     }
 
     close(F);
