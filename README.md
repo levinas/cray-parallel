@@ -1,1 +1,1 @@
-Scripts for submitting batch jobs on Cray XE6.
+Scripts for submitting simple batch jobs on Cray XE6.

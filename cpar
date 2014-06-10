@@ -5,15 +5,25 @@ use Carp;
 use File::Temp qw/tempfile tempdir/;
 use Getopt::Long;
 
-my $usage = "Usage: $0 [-c aprun_chunk] [--dry] [-N job_name] [-n num_processors] [-t num_threads_per_job] [--redo] walltime dir\n\n";
+my $usage = <<"End_of_Usage";
+Usage: $0 [options] walltime directory
 
-my ($help, $chunk, $dry, $name, $nproc, $nthread, $redo, $tmpdir);
+Options:
+       [-A allocation] [-c aprun_chunk] [--dry]
+       [-N job_name] [-n num_processors]
+       [-t num_threads_per_job] [--redo] 
+
+End_of_Usage
+
+my ($help, $alloc, $chunk, $dry, $name, $nproc, $nthread, $queue, $redo, $tmpdir);
 
 GetOptions("h|help"    => \$help,
+           "a|alloc=s" => \$alloc,
            "c|chunk=i" => \$chunk,
            "dry"       => \$dry,
            "n|np=i"    => \$nproc,
            "N|name=s"  => \$name,
+           "q|queue=s" => \$queue, 
            "r|redo"    => \$redo,
            "t|nt=i"    => \$nthread,
 	  ) or die("Error in command line arguments\n");
@@ -44,7 +54,7 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     print F "#!/bin/bash\n\n";
     print F "module swap PrgEnv-cray PrgEnv-gnu\n\n";
 
-    for (my $j = 0; $j < $jobs_per_node; $j++) {
+    for (my $j = 1; $j <= $jobs_per_node; $j++) {
         my $cmd = shift @cmds or last;
         print F "(time $cmd) > log_p$i\_j$j.txt &\n";
     }
@@ -56,12 +66,13 @@ while (@cmds && (!$nproc || $i < $nproc)) {
 
 my $tot = $i;
 my $beg = 1;
+my $k = 1;
 while ($beg <= $tot) {
 
     my $end   = min($beg+$chunk-1, $tot);
     my $range = $chunk > 1 ? "$beg-$end/$tot" : "$beg/$tot";
 
-    my $pbs   = "$dir/job.pbs";
+    my $pbs   = "$dir/job$k.pbs";
     open(F, ">$pbs") or die "Could not open $pbs";
     print F "#!/bin/bash\n";
 
@@ -71,8 +82,8 @@ while ($beg <= $tot) {
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($chunk > 1) {
-        for (my $k = $beg; $k <= $end; $k++) {
-            print F "aprun node_p$k.sh &\n";
+        for (my $i = $beg; $i <= $end; $i++) {
+            print F "aprun node_p$i.sh &\n";
         }
         print F "\nwait\n";
     } else {
@@ -81,12 +92,18 @@ while ($beg <= $tot) {
 
     close(F);
 
+    run('qsub', $alloc ? "-A $alloc" : undef,
+                $queue ? "-q $queue" : undef,
+                $pbs) unless $dry;
+
     $beg += $chunk;
+    $k++;
+
+    
 }
 
 
 sub min { $_[0] < $_[1] ? $_[0] : $_[1]; }
 sub remove_dir { run("rm -rf $_[0]"); }
 sub verify_dir { run("mkdir -p $_[0]");  }
-
 sub run { system(@_) == 0 or confess("FAILED: ". join(" ", @_)); }
