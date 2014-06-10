@@ -64,6 +64,7 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     run("chmod a+x $jobfile");
 }
 
+chdir($dir);
 my $tot = $i;
 my $beg = 1;
 my $k = 1;
@@ -72,7 +73,7 @@ while ($beg <= $tot) {
     my $end   = min($beg+$chunk-1, $tot);
     my $range = $chunk > 1 ? "$beg-$end/$tot" : "$beg/$tot";
 
-    my $pbs   = "$dir/job$k.pbs";
+    my $pbs   = "job$k.pbs";
     open(F, ">$pbs") or die "Could not open $pbs";
     print F "#!/bin/bash\n";
 
@@ -98,8 +99,6 @@ while ($beg <= $tot) {
 
     $beg += $chunk;
     $k++;
-
-    
 }
 
 
