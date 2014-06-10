@@ -30,8 +30,9 @@ GetOptions("h|help"    => \$help,
 
 $help and die $usage;
 
-$chunk ||= 1;
-$name  ||= "cpar";
+$nthread ||= 1;
+$chunk   ||= 1;
+$name    ||= "cpar";
 
 my $wall = shift @ARGV or die $usage;
 my $dir  = shift @ARGV or die $usage;
