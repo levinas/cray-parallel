@@ -102,9 +102,11 @@ while ($beg <= $tot) {
 
     close(F);
 
-    run('qsub', $alloc ? "-A $alloc" : undef,
-                $queue ? "-q $queue" : undef,
-                $pbs) unless $dry;
+    my @cmd = ('qsub', $alloc ? "-A $alloc" : undef,
+               $queue ? "-q $queue" : undef,
+               $pbs);
+
+    if (!$dry) { system join(" ", @cmd); }
 
     $beg += $chunk;
     $k++;
