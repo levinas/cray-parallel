@@ -55,11 +55,11 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     print F "#!/bin/bash\n\n";
     # print F 'time__="\nCommand: %C\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps\n"'."\n";
     print F "host__=`hostname`\n\n";
+    print F 'echo $host__ "BEG> " `date`'."\n\n";
     # print F "module swap PrgEnv-cray PrgEnv-gnu\n\n";
 
     for (my $j = 1; $j <= $jobs_per_node; $j++) {
         my $cmd = shift @cmds or last;
-        # print F 'echo $host__ "BEG> " `date`'."> /dev/stderr\n";
         # print F 'echo `printf "%q" '."'$cmd'` > /dev/stderr\n";
         print F "time ($cmd) > log_p$i\_j$j.txt &\n";
         # print F "time -o time_p$i.txt -a". ' -f $time__'. " ($cmd) > log_p$i\_j$j.txt &\n\n";
@@ -67,6 +67,7 @@ while (@cmds && (!$nproc || $i < $nproc)) {
     }
 
     print F "wait\n\n";
+    print F 'echo $host__ "END> " `date`'."\n\n";
     close(F);
     run("chmod a+x $jobfile");
 }
