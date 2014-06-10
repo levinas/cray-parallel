@@ -2,16 +2,37 @@
 
 use strict;
 use Carp;
-use File::Temp qw/tempfile tempdir/;
 use Getopt::Long;
 
 my $usage = <<"End_of_Usage";
-Usage: $0 [options] walltime directory
+Usage: $0 [options] qsub_walltime output_directory
 
 Options:
-       [-A allocation] [-c aprun_chunk] [--dry]
-       [-N job_name] [-n num_processors] [-q queue]
-       [-t num_threads_per_job] [--redo] 
+        -A alloc         - project allocation for the qsub -A parameter
+        -c chunk         - number of nodes per qsub job (D = 5)
+        -dry             - dry run
+        -n nodes         - max total nodes to use (D = 10)
+        -N name          - job name 
+        -q queue         - job queue for the qsub -q parameter
+        -t threads       - number of threads each command uses (D = 1)
+        -redo            - overwrite project directory
+
+Examples:
+
+  > for i in {1..60}; do echo "echo $i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
+
+    This pipeline will launch 2 qsub jobs using a total of 10 nodes (240 cores).
+    Each aprun line will execute (24/8=) 3 commands on the same node. 
+    Each qsub job will use 5 nodes with (60/10*5/3=) 10 aprun lines.
+    This means each node will be mapped to 2 aprun lines and thus 2 minutes.
+    Given the qsub overhead, our 3-minute-long qsub jobs may be adequate. 
+
+  > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
+
+    This pipeline will launch 1 hour jobs on no more than 10 nodes to
+    blast every query file against the NR. A large number of query files
+    will result in multiple sequential aprun lines on each node. So the
+    qsub job length needs to be adjusted manually to reflect that.
 
 End_of_Usage
 
@@ -30,8 +51,9 @@ GetOptions("h|help"    => \$help,
 
 $help and die $usage;
 
+$chunk   ||= 5;
+$nproc   ||= 10;
 $nthread ||= 1;
-$chunk   ||= 1;
 $name    ||= "cpar";
 
 my $wall = shift @ARGV or die $usage;
@@ -48,29 +70,28 @@ my @cmds = map { chomp; $_ } <STDIN>;
 my $jobs_per_node = int($cores_per_node / $nthread);
 
 my $i = 0;
-while (@cmds && (!$nproc || $i < $nproc)) {
-    $i++;
+my $cmd_i = 0;
+while (@cmds) {
+    $i++; $cmd_i++;
     my $jobfile = "$dir/node_p$i.sh";
     open(F, ">$jobfile") or die "Could not open $jobfile";
     print F "#!/bin/bash\n\n";
-    # print F 'time__="\nCommand: %C\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps\n"'."\n";
     print F "host__=`hostname`\n\n";
-    print F 'echo $host__ "BEG> " `date`'."\n\n";
+    print F 'echo $host__ "BEG> " `date`'.">/dev/stderr\n\n";
     # print F "module swap PrgEnv-cray PrgEnv-gnu\n\n";
 
     for (my $j = 1; $j <= $jobs_per_node; $j++) {
         my $cmd = shift @cmds or last;
-        # print F 'echo `printf "%q" '."'$cmd'` > /dev/stderr\n";
-        print F "time ($cmd) > log_p$i\_j$j.txt &\n";
-        # print F "time -o time_p$i.txt -a". ' -f $time__'. " ($cmd) > log_p$i\_j$j.txt &\n\n";
-        # print F 'echo $host__ "END> " `date`'."> /dev/stderr\n\n";
+        print F "time ($cmd; echo $cmd_i >>cmds.done) > log_p$i\_j$j.txt &\n";
     }
 
     print F "wait\n\n";
-    print F 'echo $host__ "END> " `date`'."\n\n";
+    print F 'echo $host__ "END> " `date`'.">/dev/stderr\n\n";
     close(F);
     run("chmod a+x $jobfile");
 }
+
+# $nproc ||= int((@cmds-1) / $jobs_per_node + 1);
 
 chdir($dir);
 my $tot = $i;
