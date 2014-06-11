@@ -19,7 +19,7 @@ Options:
 
 Examples:
 
-  > for i in {1..60}; do echo "echo $i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
+  > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
 
     This pipeline will launch 2 qsub jobs using a total of 10 nodes (240 cores).
     Each aprun line will execute (24/8=) 3 commands on the same node. 
@@ -63,82 +63,99 @@ my $dir  = shift @ARGV or die $usage;
 remove_dir($dir) if $redo;
 verify_dir($dir);
 
-my $cores_per_node = 24;
-
 my @cmds = map { chomp; $_ } <STDIN>;
 
-my $jobs_per_node = int($cores_per_node / $nthread);
+my $cores_per_node = 24;
+my $jobs_per_node  = int($cores_per_node / $nthread);
+my $mppwidth       = $chunk * $cores_per_node;
 
 my $i = 0;
-my $cmd_i = 0;
-while (@cmds) {
-    $i++; $cmd_i++;
-    my $jobfile = "$dir/node_$i.sh";
+my $ci = 0;
+while (@cmds > 0) {
+    $i++; 
+    my $jobfile = "$dir/node_n$i.sh";
     open(F, ">$jobfile") or die "Could not open $jobfile";
     print F "#!/bin/bash\n\n";
+    print F 'time__="\nCommand: %C\n%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps\n"'."\n";
     print F "host__=`hostname`\n\n";
-    print F 'echo $host__ "BEG> " `date`'.">/dev/stderr\n\n";
+    print F 'echo $host__ "BEG> " `date`'."\n\n";
     # print F "module swap PrgEnv-cray PrgEnv-gnu\n\n";
 
     for (my $j = 1; $j <= $jobs_per_node; $j++) {
+        $ci++;
+        
         my $cmd = shift @cmds or last;
-        print F "time ($cmd; echo $cmd_i >>cmds.done) > log_p$i\_j$j.txt &\n";
+        my $cmdfile = "cmd_$ci.sh";
+        my $cmdlog = "out_cmd_$ci.txt";
+        create_cmd_file($cmd, "$dir/$cmdfile", $cmdlog);
+        print F "(/usr/bin/time -a -o time_n$i.txt -f \$time__ cmd_$ci.sh; echo $ci >>DONE.cmds) &\n";
+        # print F "(time cmd_$ci.sh; echo $ci >>DONE.cmds) &\n";
     }
 
-    print F "wait\n\n";
-    print F 'echo $host__ "END> " `date`'.">/dev/stderr\n\n";
+    print F "\nwait\n\n";
+    print F 'echo $host__ "END> " `date`'."\n\n";
     close(F);
     run("chmod a+x $jobfile");
 }
-
-my $tot = $i;
-$nproc = min($nproc, $tot);
+my $tot = $i; $nproc = min($nproc, $tot);
 
 chdir($dir);
 my $beg = 1;
 my $k = 1;
 while ($beg <= $tot) {
-    # my $left  = $tot - $beg + 1;
-    # my $remaining_chunks = $nproc - $k + 1;
-    my $num   = $left - $tot -  / ($nproc/$chunk)
-    
-    my $end   = min($beg+$chunk-1, $tot);
-    my $b_e   = $chunk > 1 ? "$beg-$end" : $beg;
-    my $range = "$b_e/$tot";
+    my $left = $tot - $beg + 1;
+    my $guys = $nproc - $k + 1;
+    my $todo = ceiling($left, $guys); # ceiling($left/$guys)
+    $todo    = min(max($todo, $chunk), $left);
+    my $end  = $beg + $todo - 1;
+
+    my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
+    my $range = "$b2e/$tot";
 
     my $pbs   = "job$k.pbs";
     open(F, ">$pbs") or die "Could not open $pbs";
     print F "#!/bin/bash\n\n";
 
     print F "#PBS -l walltime=$wall\n";
-    print F "#PBS -l mppwidth=24\n";
+    print F "#PBS -l mppwidth=$mppwidth\n";
     print F "#PBS -N $name:$range\n";
-    print F "#PBS -e $name-$b_e.".'$PBS_JOBID.err'."\n";
-    print F "#PBS -o $name-$b_e.".'$PBS_JOBID.out'."\n\n";
+    print F "#PBS -e $name-$b2e.".'$PBS_JOBID.err'."\n";
+    print F "#PBS -o $name-$b2e.".'$PBS_JOBID.out'."\n\n";
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
-    if ($chunk > 1) {
+    if ($todo > 1) {
         for (my $i = $beg; $i <= $end; $i++) {
-            print F "aprun ./node_$i.sh &\n";
+            print F "aprun ./node_n$i.sh &\n";
         }
         print F "\nwait\n";
     } else {
-        print F "aprun ./node_$beg.sh\n";
+        print F "aprun ./node_n$beg.sh\n";
     }
-
     close(F);
 
     my @cmd = ('qsub', $alloc ? "-A $alloc" : undef,
-               $queue ? "-q $queue" : undef,
-               $pbs);
+                       $queue ? "-q $queue" : undef, $pbs);
 
-    if (!$dry) { system join(" ", @cmd); }
+    system join(" ", @cmd) if !$dry;
 
-    $beg += $chunk;
-    $k++;
+    $beg = $end + 1; $k++;
+}
+
+sub create_cmd_file {
+    my ($cmd, $file, $log) = @_;
+
+    open(CMD, ">$file") or die "Could not open $file";
+
+    print CMD "#!/bin/bash\n\n";
+    print CMD "( $cmd ) > $log\n\n";
+    
+    close(CMD);
+    run("chmod a+x $file");
 }
 
 
+sub ceiling { int(($_[0] - 1) / $_[1]) + 1; }
+sub max { $_[0] > $_[1] ? $_[0] : $_[1]; }
 sub min { $_[0] < $_[1] ? $_[0] : $_[1]; }
 sub remove_dir { run("rm -rf $_[0]"); }
 sub verify_dir { run("mkdir -p $_[0]");  }
