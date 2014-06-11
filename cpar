@@ -2,7 +2,7 @@
 
 use strict;
 use Carp;
-use Getopt::Long;
+use Getopt::Long qw(:config no_ignore_case);
 
 my $usage = <<"End_of_Usage";
 Usage: $0 [options] qsub_walltime output_directory
@@ -12,7 +12,7 @@ Options:
         -c chunk         - number of nodes per qsub job (D = 5)
         -dry             - dry run
         -n nodes         - max total nodes to use (D = 10)
-        -N name          - job name 
+        -N name          - job name for the qsub -N parameter
         -q queue         - job queue for the qsub -q parameter
         -t threads       - number of threads each command uses (D = 1)
         -redo            - overwrite project directory
@@ -39,7 +39,7 @@ End_of_Usage
 my ($help, $alloc, $chunk, $dry, $name, $nproc, $nthread, $queue, $redo, $tmpdir);
 
 GetOptions("h|help"    => \$help,
-           "a|alloc=s" => \$alloc,
+           "A|alloc=s" => \$alloc,
            "c|chunk=i" => \$chunk,
            "dry"       => \$dry,
            "n|np=i"    => \$nproc,
@@ -55,6 +55,7 @@ $chunk   ||= 5;
 $nproc   ||= 10;
 $nthread ||= 1;
 $name    ||= "cpar";
+$chunk     = min($nproc, $chunk);
 
 my $wall = shift @ARGV or die $usage;
 my $dir  = shift @ARGV or die $usage;
@@ -67,7 +68,6 @@ my @cmds = map { chomp; $_ } <STDIN>;
 
 my $cores_per_node = 24;
 my $jobs_per_node  = int($cores_per_node / $nthread);
-my $mppwidth       = $chunk * $cores_per_node;
 
 my $i = 0;
 my $ci = 0;
@@ -89,6 +89,7 @@ while (@cmds > 0) {
         my $cmdlog = "out_cmd_$ci.txt";
         create_cmd_file($cmd, "$dir/$cmdfile", $cmdlog);
         print F "(/usr/bin/time -a -o time_n$i.txt -f \"\$time__\" ./cmd_$ci.sh && echo $ci >>DONE.cmds) &\n";
+        # print F "(/usr/bin/time cmd_$ci.sh && echo $ci >>DONE.cmds) &\n";
         # print F "(time cmd_$ci.sh && echo $ci >>DONE.cmds) &\n";
     }
 
@@ -103,12 +104,14 @@ chdir($dir);
 my $beg = 1;
 my $k = 1;
 while ($beg <= $tot) {
-    my $left = $tot - $beg + 1;
-    my $guys = $nproc - $k + 1;
-    my $todo = ceiling($left, $guys); # ceiling($left/$guys)
-    $todo    = min(max($todo, $chunk), $left);
-    my $end  = $beg + $todo - 1;
-
+    # FIXME: need to use chunk
+    my $left  = $tot - $beg + 1;
+    my $guys  = $nproc - $k + 1;
+    my $todo  = min(ceiling($left, $guys), $left); # ceiling($left/$guys)
+    print join("\t", $k, $left, $guys, $todo) . "\n";
+    
+    my $end   = $beg + $todo - 1;
+    my $width = min($chunk, $todo) * $cores_per_node;
     my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
     my $range = "$b2e/$tot";
 
@@ -117,7 +120,7 @@ while ($beg <= $tot) {
     print F "#!/bin/bash\n\n";
 
     print F "#PBS -l walltime=$wall\n";
-    print F "#PBS -l mppwidth=$mppwidth\n";
+    print F "#PBS -l mppwidth=$width\n";
     print F "#PBS -N $name:$range\n";
     print F "#PBS -e $name-$b2e.".'$PBS_JOBID.err'."\n";
     print F "#PBS -o $name-$b2e.".'$PBS_JOBID.out'."\n\n";
