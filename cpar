@@ -88,8 +88,8 @@ while (@cmds > 0) {
         my $cmdfile = "cmd_$ci.sh";
         my $cmdlog = "out_cmd_$ci.txt";
         create_cmd_file($cmd, "$dir/$cmdfile", $cmdlog);
-        print F "(/usr/bin/time -a -o time_n$i.txt -f \$time__ cmd_$ci.sh; echo $ci >>DONE.cmds) &\n";
-        # print F "(time cmd_$ci.sh; echo $ci >>DONE.cmds) &\n";
+        print F "(/usr/bin/time -a -o time_n$i.txt -f \$time__ ./cmd_$ci.sh && echo $ci >>DONE.cmds) &\n";
+        # print F "(time cmd_$ci.sh && echo $ci >>DONE.cmds) &\n";
     }
 
     print F "\nwait\n\n";
