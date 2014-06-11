@@ -104,14 +104,15 @@ chdir($dir);
 my $beg = 1;
 my $k = 1;
 while ($beg <= $tot) {
-    # FIXME: need to use chunk
+    # FIXME: need to use chunk, this is behaving as if each aprun is just a single node
     my $left  = $tot - $beg + 1;
-    my $guys  = $nproc - $k + 1;
-    my $todo  = min(ceiling($left, $guys), $left); # ceiling($left/$guys)
-    print join("\t", $k, $left, $guys, $todo) . "\n";
+    my $nodes = $nproc - $k + 1;
+    my $qsubs = min($nodes, $chunk);                    
+    my $todo  = min(ceiling($left, ($nodes/$qsubs)), $left); 
+    print join("\t", $k, $left, $nodes, $todo) . "\n";
     
     my $end   = $beg + $todo - 1;
-    my $width = min($chunk, $todo) * $cores_per_node;
+    my $width = $qsubs * $cores_per_node;
     my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
     my $range = "$b2e/$tot";
 
