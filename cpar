@@ -115,8 +115,8 @@ while ($beg <= $tot) {
     my $width = $qsubs * $cores_per_node;
     my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
     my $range = "$b2e/$tot";
-
     my $pbs   = "job$k.pbs";
+
     open(F, ">$pbs") or die "Could not open $pbs";
     print F "#!/bin/bash\n\n";
 
@@ -128,9 +128,7 @@ while ($beg <= $tot) {
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($todo > 1) {
-        for (my $i = $beg; $i <= $end; $i++) {
-            print F "aprun ./node_n$i.sh &\n";
-        }
+        print F "aprun ./node_n$i.sh &\n" for $i ($beg..$end);
         print F "\nwait\n";
     } else {
         print F "aprun ./node_n$beg.sh\n";
