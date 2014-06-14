@@ -103,12 +103,11 @@ my $tot = $i; $nproc = min($nproc, $tot);
 chdir($dir);
 my $beg = 1;
 my $k = 1;
+my $nodes = $nproc;                  # remaining nodes
 while ($beg <= $tot) {
-    # FIXME: need to use chunk, this is behaving as if each aprun is just a single node
-    my $left  = $tot - $beg + 1;
-    my $nodes = $nproc - $k + 1;
-    my $qsubs = min($nodes, $chunk);                    
-    my $todo  = min(ceiling($left, ($nodes/$qsubs)), $left); 
+    my $left  = $tot - $beg + 1;     # remaining node-level jobs
+    my $qsubs = min($nodes, $chunk); # nodes to use in the next qsub
+    my $todo  = min(ceiling($left, ($nodes/$qsubs)), $left); # aprun lines in the qsub
     print join("\t", $k, $left, $nodes, $todo) . "\n";
     
     my $end   = $beg + $todo - 1;
@@ -128,7 +127,7 @@ while ($beg <= $tot) {
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($todo > 1) {
-        print F "aprun ./node_n$i.sh &\n" for $i ($beg..$end);
+        print F "aprun ./node_n$_.sh &\n" for $beg..$end;
         print F "\nwait\n";
     } else {
         print F "aprun ./node_n$beg.sh\n";
@@ -141,6 +140,7 @@ while ($beg <= $tot) {
     system join(" ", @cmd) if !$dry;
 
     $beg = $end + 1; $k++;
+    $nodes -= $qsubs;
 }
 
 sub create_cmd_file {
