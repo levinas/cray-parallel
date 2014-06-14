@@ -9,12 +9,13 @@ use Getopt::Long;
 my $usage = "Usage: $0 [options] input.lp \n\n";
 
 
-my ($help, $hours, $memory, $threads, $dry);
+my ($help, $hours, $memory, $threads, $dry, $outdir);
 
 GetOptions("h|help" => \$help,
            "h=f"    => \$hours,
            "m=i"    => \$memory,
            "t=i"    => \$threads,
+           "o=s"    => \$outdir,
            "dry"    => \$dry,
 	  ) or die("Error in command line arguments\n");
 
@@ -23,6 +24,7 @@ $help and die $usage;
 my $lpfile = shift @ARGV or die $usage;
 -s $lpfile or die "File not found: $lpfile";
 $lpfile = abs_path($lpfile);
+$outdir = abs_path($outdir);
 
 $hours   ||= 8;
 $memory  ||= 1000;               # MB
@@ -56,5 +58,7 @@ End_of_Script
 close(F);
 
 run("cplex <$script") unless $dry;
+
+run("cp $solution $outdir") if $outdir && -s $solution;
 
 sub run { system(@_) == 0 or confess("FAILED: ". join(" ", @_)); }
