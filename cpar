@@ -108,8 +108,6 @@ while ($beg <= $tot) {
     my $left  = $tot - $beg + 1;     # remaining node-level jobs
     my $qsubs = min($nodes, $chunk); # nodes to use in the next qsub
     my $todo  = min(ceiling($left, ($nodes/$qsubs)), $left); # aprun lines in the qsub
-    print join("\t", $k, $left, $nodes, $todo) . "\n";
-    
     my $end   = $beg + $todo - 1;
     my $width = $qsubs * $cores_per_node;
     my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
