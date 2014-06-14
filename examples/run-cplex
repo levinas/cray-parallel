@@ -1,0 +1,57 @@
+#! /usr/bin/env perl
+
+use strict;
+
+use Carp;
+use Cwd 'abs_path';
+use Getopt::Long;
+
+my $usage = "Usage: $0 [options] input.lp \n\n";
+
+
+my ($help, $hours);
+
+GetOptions("h|help" => \$help,
+           "h=f"    => \$hours,
+           "m=i"    => \$memory,
+           "t=i"    => \$threads,
+	  ) or die("Error in command line arguments\n");
+
+$help and die $usage;
+
+my $lpfile = shift @ARGV or die $usage;
+-s $lpfile or die "File not found: $lpfile";
+$lpfile = abs_path($lpfile);
+
+$hours   ||= 8;
+$memory  ||= 1000;               # MB
+$threads ||= 4;                  
+
+my $timelimit = int($hours * 3600);
+
+my $name = $lpfile; $name =~ s#.*/##; $name =~ s/\.lp$//i;
+
+my $dir = $name;
+run("mkdir -p $dir");
+chdir($dir);
+
+my $script = "$name.script";
+my $output = "$name.txt";
+
+open(F, ">$script") or die "Could not open $script";
+print F <<"End_of_Script";
+set timelimit $timelimit
+set mip tolerances mipgap 0.02
+set mip tolerances integrality 1e-09
+set simplex tolerances feasibility 1e-09
+set feasopt tolerance 1e-09
+set mip display 0
+set mip limits treememory $memory
+set threads $threads
+read $lpfile
+mipopt
+write $output sol
+End_of_Script
+close(F);
+
+sub run { system(@_) == 0 or confess("FAILED: ". join(" ", @_)); }
