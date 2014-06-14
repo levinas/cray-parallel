@@ -9,12 +9,13 @@ use Getopt::Long;
 my $usage = "Usage: $0 [options] input.lp \n\n";
 
 
-my ($help, $hours);
+my ($help, $hours, $memory, $threads, $dry);
 
 GetOptions("h|help" => \$help,
            "h=f"    => \$hours,
            "m=i"    => \$memory,
            "t=i"    => \$threads,
+           "dry"    => \$dry,
 	  ) or die("Error in command line arguments\n");
 
 $help and die $usage;
@@ -35,8 +36,8 @@ my $dir = $name;
 run("mkdir -p $dir");
 chdir($dir);
 
-my $script = "$name.script";
-my $output = "$name.txt";
+my $script   = "$name.script";
+my $solution = "$name.txt";
 
 open(F, ">$script") or die "Could not open $script";
 print F <<"End_of_Script";
@@ -50,8 +51,10 @@ set mip limits treememory $memory
 set threads $threads
 read $lpfile
 mipopt
-write $output sol
+write $solution sol
 End_of_Script
 close(F);
+
+run("cplex <$script") unless $dry;
 
 sub run { system(@_) == 0 or confess("FAILED: ". join(" ", @_)); }
