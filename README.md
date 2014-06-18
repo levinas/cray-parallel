@@ -3,7 +3,7 @@ It is intended to be used in one-liners with GNU parallel.
 
 
 ```
-Usage: $0 [options] qsub_walltime output_directory
+Usage: cpar [options] qsub_walltime output_directory
 
 Options:
         -A alloc         - project allocation for the qsub -A parameter
