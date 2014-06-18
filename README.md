@@ -16,7 +16,9 @@ Options:
 
 Examples:
 
+```
   > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
+```
 
     This pipeline will launch 2 qsub jobs using a total of 10 nodes (240 cores).
     Each aprun line will execute (24/8=) 3 commands on the same node. 
@@ -24,8 +26,9 @@ Examples:
     This means each node will be mapped to 2 aprun lines and thus 2 minutes.
     Given the qsub overhead, our 3-minute-long qsub jobs may be adequate. 
 
+```
   > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
-
+```
     This pipeline will launch 1 hour jobs on no more than 10 nodes to
     blast every query file against the NR. A large number of query files
     will result in multiple sequential aprun lines on each node. So the
