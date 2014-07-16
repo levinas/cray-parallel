@@ -16,6 +16,7 @@ Options:
         -n nodes         - max total nodes to use (D = 10)
         -N name          - job name for the qsub -N parameter
         -q queue         - job queue for the qsub -q parameter
+        -s env           - environment setting file to source 
         -t threads       - number of threads each command uses (D = 1)
         -redo            - overwrite project directory
 
@@ -38,17 +39,18 @@ Examples:
 
 End_of_Usage
 
-my ($help, $alloc, $chunk, $dry, $name, $nproc, $nthread, $queue, $redo, $tmpdir);
+my ($help, $alloc, $chunk, $dry, $name, $nproc, $nthread, $queue, $redo, $source, $tmpdir);
 
-GetOptions("h|help"    => \$help,
-           "A|alloc=s" => \$alloc,
-           "c|chunk=i" => \$chunk,
-           "dry"       => \$dry,
-           "n|np=i"    => \$nproc,
-           "N|name=s"  => \$name,
-           "q|queue=s" => \$queue, 
-           "r|redo"    => \$redo,
-           "t|nt=i"    => \$nthread,
+GetOptions("h|help"     => \$help,
+           "A|alloc=s"  => \$alloc,
+           "c|chunk=i"  => \$chunk,
+           "dry"        => \$dry,
+           "n|np=i"     => \$nproc,
+           "N|name=s"   => \$name,
+           "q|queue=s"  => \$queue, 
+           "r|redo"     => \$redo,
+           "s|source=s" => \$source,
+           "t|nt=i"     => \$nthread,
 	  ) or die("Error in command line arguments\n");
 
 $help and die $usage;
@@ -124,6 +126,7 @@ while ($beg <= $tot) {
     print F "#PBS -N $name:$range\n";
     print F "#PBS -e $name-$b2e.".'$PBS_JOBID.err'."\n";
     print F "#PBS -o $name-$b2e.".'$PBS_JOBID.out'."\n\n";
+    print F "source $source\n\n" if $source;
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($todo > 1) {
