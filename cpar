@@ -37,11 +37,6 @@ Examples:
     is thus 2 * 60 seconds plus overhead. Our 3-minute allocation
     should be sufficient.
 
-Each qsub job will use 5 nodes with (60/10*5/3=)
-    10 aprun lines.  This means each node will be mapped to 2 aprun
-    lines and thus 2 minutes.  Given the qsub overhead, our
-    3-minute-long qsub jobs may be adequate.
-
   > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
 
     This pipeline will launch 1 hour jobs on no more than 10 nodes to
