@@ -19,11 +19,18 @@ Examples:
 
   > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
 
-    This pipeline will launch 2 qsub jobs using a total of 10 nodes (240 cores).
-    Each aprun line will execute (24/8=) 3 commands on the same node. 
-    Each qsub job will use 5 nodes with (60/10*5/3=) 10 aprun lines.
-    This means each node will be mapped to 2 aprun lines and thus 2 minutes.
-    Given the qsub overhead, our 3-minute-long qsub jobs may be adequate. 
+    The first part of this pipe tries to launch 60 jobs each sleeping
+    for one minute.  With "-c 5", we parallelize it by launching qsub
+    jobs each using 5 nodes.  The "-t 8" specifies 8 cores to be
+    allocated for each command; thus, on a machine with 24-core nodes,
+    each aprun line will execute (24/8=) 3 commands on the same
+    node. This means our 5-node qsub can handle at least (5*3=) 15
+    commands. Since we are allowed to use as many as 10 nodes (-n), we
+    will submit two such qsubs, which gives us a throughput of 30
+    commands in one iteration. The cpar tool will thus instruct each
+    qsub to have two iterations (10 aprun lines). The completion time
+    is thus 2 * 60 seconds plus overhead. Our 3-minute allocation
+    should be sufficient.
 
   > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
 
