@@ -109,7 +109,8 @@ while (@cmds > 0) {
     close(F);
     run("chmod a+x $jobfile");
 }
-my $tot = $i; $nproc = min($nproc, $tot);
+my $tot = $i;                   # total number of nodes needed for a complete parallel runs
+$nproc = min($nproc, $tot);     # total number of nodes to use
 
 chdir($dir);
 my $beg = 1;
@@ -118,7 +119,7 @@ my $nodes = $nproc;                  # remaining nodes
 while ($beg <= $tot) {
     my $left  = $tot - $beg + 1;     # remaining node-level jobs
     my $qsubs = min($nodes, $chunk); # nodes to use in the next qsub
-    my $todo  = min(ceiling($left, ($nodes/$qsubs)), $left); # aprun lines in the qsub
+    my $todo  = min(ceil($left, ($nodes/$qsubs)), $left); # aprun lines in the qsub
     my $end   = $beg + $todo - 1;
     my $width = $qsubs * $cores_per_node;
     my $b2e   = $todo > 1 ? "$beg-$end" : $beg;
@@ -137,7 +138,13 @@ while ($beg <= $tot) {
     print F 'cd $PBS_O_WORKDIR'."\n\n";
 
     if ($todo > 1) {
-        print F "aprun ./node_n$_.sh &\n" for $beg..$end;
+        my $th = 0;
+        for ($beg..$end) {
+            if ($th++  && $th % $jobs_per_node == 1) {
+                print F "\nwait\n";
+            }
+            print F "aprun ./node_n$_.sh &\n";
+        }
         print F "\nwait\n";
     } else {
         print F "aprun ./node_n$beg.sh\n";
@@ -166,7 +173,7 @@ sub create_cmd_file {
 }
 
 
-sub ceiling { int(($_[0] - 1) / $_[1]) + 1; }
+sub ceil { int(($_[0] - 1) / $_[1]) + 1; }
 sub max { $_[0] > $_[1] ? $_[0] : $_[1]; }
 sub min { $_[0] < $_[1] ? $_[0] : $_[1]; }
 sub remove_dir { run("rm -rf $_[0]"); }
