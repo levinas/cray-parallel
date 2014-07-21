@@ -140,8 +140,8 @@ while ($beg <= $tot) {
     if ($todo > 1) {
         my $th = 0;
         for ($beg..$end) {
-            if ($th++  && $th % $jobs_per_node == 1) {
-                print F "\nwait\n";
+            if ($th++  && $th % $qsubs == 1) {
+                print F "\nwait\n\n";
             }
             print F "aprun ./node_n$_.sh &\n";
         }
