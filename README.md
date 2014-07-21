@@ -19,7 +19,7 @@ Examples:
 
   > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
 
-    The first part of this pipe tries to launch dummy 60 jobs each
+    The first part of this pipe tries to launch 60 dummy jobs each
     sleeping for one minute.  With "-c 5", we parallelize it by
     launching qsub jobs each using 5 nodes.  The "-t 8" specifies 8
     cores to be allocated for each command; thus, on a machine with
