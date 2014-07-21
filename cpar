@@ -31,7 +31,7 @@ Examples:
     24-core nodes, each aprun line will execute (24/8=) 3 commands on
     the same node. This means our 5-node qsub can handle at least
     (5*3=) 15 commands. Since we are allowed to use as many as 10
-    nodes (-n), we will submit two such qsubs, which gives us a
+    nodes (-n 10), we will submit two such qsubs, which gives us a
     throughput of 30 commands in one iteration. The cpar tool will
     thus instruct each qsub to have two iterations (10 aprun
     lines). The completion time is thus 2 * 60 seconds plus
