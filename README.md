@@ -29,8 +29,8 @@ Examples:
     nodes (-n 10), we will submit two such qsubs, which gives us a
     throughput of 30 commands in one iteration. The cpar tool will
     thus instruct each qsub to have two iterations (10 aprun
-    lines). The completion time is thus 2 * 60 seconds plus
-    overhead. Our 3-minute allocation should be sufficient.
+    lines). The completion time is thus 2 * 60 seconds plus overhead.
+	Our 3-minute allocation should be sufficient.
 
   > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
 
