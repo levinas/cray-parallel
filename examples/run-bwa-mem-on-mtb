@@ -1,15 +1,16 @@
 #! /usr/bin/env perl
 
 # command:
-#   ls /lustre/beagle/fangfang/Mtb/SAMN026285*/SRR*_1.fastq.gz | run-bwa-mem-on-mtb | cpar -s ~/.beagle-modules.sh -c 10 -t 8 6:00:00 test_mem_first_28
+#   ls /lustre/beagle/$USER/Mtb/SAMN026285*/SRR*_1.fastq.gz | run-bwa-mem-on-mtb | cpar -s ~/.beagle-modules.sh -c 10 -t 8 6:00:00 test_mem_first_28
 
 use strict;
 
 my $usage = "Usage: echo path/SAMN02403611/SRR1172215 |$0 \n\n";
 
-my $dest = "/lustre/beagle/fangfang/Mtb_bwa_mem";
-my $script = "/lustre/beagle/fangfang/soot/scripts/snp.pl";
-my $ref = "/lustre/beagle/fangfang/Mtb_test/H37Rv.fa";
+my $base = "/lustre/beagle/". $ENV{USER};
+my $dest = "$base/Mtb_bwa_mem";
+my $script = "$base/soot/scripts/snp.pl";
+my $ref = "$base/Mtb_test/H37Rv.fa";
 
 while (<STDIN>) {
     my ($path, $samn, $srr) = m|(\S+/)(SAMN\d+)/(SRR\d+)|;
