@@ -77,7 +77,7 @@ verify_dir($dir);
 
 my @cmds = map { chomp; $_ } <STDIN>;
 
-my $cores_per_node = 24;
+my $cores_per_node = 32;
 my $jobs_per_node  = int($cores_per_node / $nthread);
 
 my $i = 0;
