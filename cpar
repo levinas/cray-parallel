@@ -143,11 +143,11 @@ while ($beg <= $tot) {
             if ($th++  && $th % $qsubs == 1) {
                 print F "\nwait\n\n";
             }
-            print F "aprun ./node_n$_.sh &\n";
+            print F "aprun -d $nthread ./node_n$_.sh &\n";
         }
         print F "\nwait\n";
     } else {
-        print F "aprun ./node_n$beg.sh\n";
+        print F "aprun -d $nthread ./node_n$beg.sh\n";
     }
     close(F);
 
