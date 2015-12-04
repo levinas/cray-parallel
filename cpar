@@ -16,9 +16,9 @@ Options:
         -n nodes         - max total nodes to use (D = 10)
         -N name          - job name for the qsub -N parameter
         -q queue         - job queue for the qsub -q parameter
+        -redo            - overwrite project directory
         -s env           - environment setting file to source 
         -t threads       - number of threads each command uses (D = 1)
-        -redo            - overwrite project directory
 
 Examples:
 

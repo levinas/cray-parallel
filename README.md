@@ -12,12 +12,13 @@ Options:
         -n nodes         - max total nodes to use (D = 10)
         -N name          - job name for the qsub -N parameter
         -q queue         - job queue for the qsub -q parameter
+        -redo            - environment setting file to source 
+	-s env           - env file to source before each job
         -t threads       - number of threads each command uses (D = 1)
-        -redo            - overwrite project directory
 
 Examples:
 
-  > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -j 5 -n 10 3:00 test
+  > for i in {1..60}; do echo "echo \$i; sleep 60"; done | cpar -t 8 -n 10 -c 5 3:00 test
 
     The first part of this pipe tries to launch 60 dummy jobs each
     sleeping for one minute.  With "-c 5", we parallelize it by
@@ -30,7 +31,7 @@ Examples:
     throughput of 30 commands in one iteration. The cpar tool will
     thus instruct each qsub to have two iterations (10 aprun
     lines). The completion time is thus 2 * 60 seconds plus overhead.
-	Our 3-minute allocation should be sufficient.
+    Our 3-minute allocation should be sufficient.
 
   > find /path/to/query -name *.fasta | parallel --dry-run blastall -a 6 -p blastp -d /NR/nr -i {} | cpar -t 6 1:00:00 output
 
