@@ -13,7 +13,7 @@ Options:
         -N name          - job name for the qsub -N parameter
         -q queue         - job queue for the qsub -q parameter
         -redo            - environment setting file to source 
-	-s env           - env file to source before each job
+        -s env           - env file to source before each job
         -t threads       - number of threads each command uses (D = 1)
 
 Examples:
